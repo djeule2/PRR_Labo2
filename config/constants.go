@@ -11,3 +11,7 @@ const DEMANDE = "DEMANDE"
 const ATTENTE = "VALUE"
 
 const FIN  = "FIN"
+
+const AUTORISATION = "OK"
+
+const UPDATE = "UPDATE"

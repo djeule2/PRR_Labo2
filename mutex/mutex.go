@@ -35,7 +35,7 @@ chanToNetwork chan string, client client.Client) *Mutex  {
 	mut.moi = id
 	mut.h = 0
 	mut.accordSC = false
-	mut.tabM = make([]string, 0)
+	mut.tabM = make([]string, mut.n)
 	mut.client = client
 
 	mut.chanToNetwork = chanToNetwork
@@ -47,6 +47,7 @@ chanToNetwork chan string, client client.Client) *Mutex  {
 }
 
 func (m *Mutex)Exec()  {
+	go m.client.Exec()
 	go m.ManageMessage()
 }
 
@@ -56,27 +57,28 @@ func (mess *Mutex)ManageMessage()  {
 		select {
 		//Message provided by network REQ, ACK, RELEASE
 		case clientMsg := <-mess.chanFromNetwork:
-			utils.PrintMessage(mess.moi, partName, clientMsg)
+			utils.PrintMessage(mess.moi, partName, clientMsg +"\n")
 
 			//test si le message commence par le mot cle REQ
 			if strings.HasPrefix(clientMsg, config.REQ) {
-				utils.PrintMessage(mess.moi, partName, "REQ received")
+				utils.PrintMessage(mess.moi, partName, " REQ received \n")
 				msgSplit := strings.Split(clientMsg, ",")
-				Hi, err1 := strconv.ParseUint(msgSplit[0], 10, 32)
-				i, err2 := strconv.ParseUint(msgSplit[1], 10, 32)
+				Hi, err1 := strconv.ParseUint(msgSplit[1], 10, 32)
+				i, err2 := strconv.ParseUint(msgSplit[2], 10, 32)
+
 				if err1 == nil && err2 == nil {
 					mess.req(uint32(Hi), uint32(i))
 				}
 			} else if strings.HasPrefix(clientMsg, config.ACK) {
-				utils.PrintMessage(mess.moi, partName, "ACK received")
+				utils.PrintMessage(mess.moi, partName, " ACK received \n")
 				msgSplit := strings.Split(clientMsg, ",")
-				Hi, err1 := strconv.ParseUint(msgSplit[0], 10, 32)
-				i, err2 := strconv.ParseUint(msgSplit[1], 10, 32)
+				Hi, err1 := strconv.ParseUint(msgSplit[1], 10, 32)
+				i, err2 := strconv.ParseUint(msgSplit[2], 10, 32)
 				if err1 == nil && err2 == nil {
 					mess.ack(uint32(Hi), uint32(i))
 				}
 			} else if strings.HasPrefix(clientMsg, config.REL) {
-				utils.PrintMessage(mess.moi, partName, "REL received")
+				utils.PrintMessage(mess.moi, partName, " REL received \n")
 				msgSplit := strings.Split(clientMsg, ",")
 				Hi, err1 := strconv.ParseUint(msgSplit[0], 10, 32)
 				i, err2 := strconv.ParseUint(msgSplit[1], 10, 32)
@@ -87,15 +89,20 @@ func (mess *Mutex)ManageMessage()  {
 
 			//Message provide by client DEMANDE, ATTENTE, RELEASE
 			case mutexMsg := <-mess.chanFromClient:
-				utils.PrintMessage(mess.moi, partName, mutexMsg)
+				utils.PrintMessage(mess.moi, partName, mutexMsg +"\n")
 				if strings.HasPrefix(mutexMsg, config.DEMANDE){
-					utils.PrintMessage(mess.moi, partName, "Demande received from client")
+					utils.PrintMessage(mess.moi, partName, " Demande received from client \n")
 					mess.demande()
-				} else if strings.HasPrefix(mutexMsg, config.ATTENTE){
-					utils.PrintMessage(mess.moi, partName, "ATTENTE acoord for SC")
-					mess.attente()
+				} else if strings.HasPrefix(mutexMsg, config.VALUE){
+					utils.PrintMessage(mess.moi, partName, " Value change received from clien \n")
+					splitMsg := strings.Split(mutexMsg, ",")
+					v, error := strconv.ParseUint(splitMsg[1], 10, 32)
+					if error == nil{
+						mess.sendValue(uint32(v))
+					}
+
 				}else if strings.HasPrefix(mutexMsg, config.FIN){
-					utils.PrintMessage(mess.moi, partName, "END received from client")
+					utils.PrintMessage(mess.moi, partName, " END received from client \n")
 					mess.fin()
 
 				}
@@ -130,6 +137,7 @@ func (m*Mutex)fin()  {
 func (m*Mutex)attente()  {
 	if m.accordSC{
 		// le traittement débloque le client qui passe en SC
+		m.chanToClient <- config.AUTORISATION
 	}
 }
 
@@ -137,18 +145,21 @@ func (m*Mutex)req(hi uint32, i uint32)  {
 	m.h = utils.Max(hi, m.h) + 1
 	message := []string{config.REQ, fmt.Sprint(hi), fmt.Sprint(i)}
 	m.tabM[i] = strings.Join(message, ",")
+
 	m.sendMessage(config.ACK, m.h, i)
 	m.verifieSC()
 
 }
 
 func (m*Mutex)ack(hi uint32, i uint32)  {
-	m.h = utils.Max(m.h, hi)
+	m.h = utils.Max(m.h, hi) +1
 	msgType := strings.Split(m.tabM[i], ",")[0]
 	if msgType != config.REQ{
-		message := []string{config.ACK, fmt.Sprint(hi), fmt.Sprint(i)}
+		message := []string{config.ACK, fmt.Sprint(hi),  fmt.Sprint(i)}
 		m.tabM[i] = strings.Join(message, ",")
+
 	}
+
 	m.verifieSC()
 }
 
@@ -160,16 +171,27 @@ func (m*Mutex)rel(hi uint32, i uint32)  {
 }
 
 func (m*Mutex) verifieSC()  {
-	 msgType := strings.Split(m.tabM[m.moi], ",")[0]
-	if msgType != config.REQ{
+
+	msgType := strings.Split(m.tabM[m.moi], ",")[0]
+
+
+	if msgType != config.REQ {
 		return
 	}
+	hm := strings.Split(m.tabM[m.moi], ",")[1]
+
 	 plusAcienne := true
 	 for i:= uint32(0); i<m.n; i++{
-	 	if m.tabM[m.moi] >m.tabM[i] {
+	 	if m.moi == i{
+	 		continue
+		}
+		hi:=  strings.Split(m.tabM[i], ",")[1]
+
+
+	 	if hm >hi {
 	 		plusAcienne = false
 			break
-		}else if (m.tabM[m.moi] == m.tabM[i]) && (m.moi>i){
+		}else if (hm == hi) && (m.moi>i){
 			plusAcienne = false
 			break
 		}
@@ -177,18 +199,29 @@ func (m*Mutex) verifieSC()  {
 	 if plusAcienne{
 	 	m.accordSC = true
 	 }
+	 m.attente()
 }
 
 
 func (m*Mutex) sendMessage(methode string, hi uint32, i uint32)  {
 	if i != m.moi {
-		message := []string{methode, fmt.Sprint(hi),fmt.Sprint(i) }
+		message := []string{methode, fmt.Sprint(hi), fmt.Sprint(m.moi), fmt.Sprint(i) }
 		m.sendMessageToNetwork(strings.Join(message, ","))
 	}
 }
 
+func (m*Mutex)sendValue(v uint32)  {
+	for i:= uint32(0); i< m.n; i++{
+		if i != m.moi{
+			mess := []string{config.VALUE, fmt.Sprint(v), fmt.Sprint(m.moi), fmt.Sprint(i)}
+			m.sendMessageToNetwork(strings.Join(mess, ","))
+		}
+	}
+
+}
+
 func (m*Mutex)sendMessageToNetwork(message string)  {
-	utils.PrintMessage(m.moi, partName, "Send to network : "+message)
+	utils.PrintMessage(m.moi, partName, " Send to network : "+message +"\n")
 	m.chanToNetwork <- message
 }
 

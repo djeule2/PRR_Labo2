@@ -8,7 +8,7 @@ const REL = "RELEASE"
 
 const DEMANDE = "DEMANDE"
 
-const ATTENTE = "VALUE"
+const VALUE = "VALUE"
 
 const FIN  = "FIN"
 

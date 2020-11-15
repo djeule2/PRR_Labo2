@@ -54,10 +54,10 @@ func (c *Client)receiveMessage()  {
 		mutexMsg := <- c.chanFromMutex
 		utils.PrintMessage(c.id, partName, mutexMsg);
 		if strings.HasPrefix(mutexMsg, config.AUTORISATION){
-			utils.PrintMessage(c.id, partName, "Authorization to access to SC change the value")
+			utils.PrintMessage(c.id, partName, " Authorization to access to SC change the value \n")
 			c.traitment()
-		} else if strings.HasPrefix(mutexMsg, config.UPDATE) {
-			utils.PrintMessage(c.id, partName, "New value received, updated")
+		} else if strings.HasPrefix(mutexMsg, config.VALUE) {
+			utils.PrintMessage(c.id, partName, " New value received, updated \n")
 			splitMsg := strings.Split(mutexMsg, ", ");
 			value, err := strconv.ParseUint(splitMsg[1], 10, 32)
 			if err == nil{
@@ -70,7 +70,7 @@ func (c *Client)receiveMessage()  {
 func (c *Client) traitment() {
 	time.Sleep(config.Temps_SC*time.Second)
 	c.changeValue()
-	message := []string{config.UPDATE, fmt.Sprint(c.valueSC)}
+	message := []string{config.VALUE, fmt.Sprint(c.valueSC)}
 	c.chanToMutex <- strings.Join(message, ",")
 	c.chanToMutex <- config.FIN
 }
@@ -83,7 +83,7 @@ func (c*Client)demadeReq()  {
 			time.Sleep(100*time.Second)
 		}
 		time.Sleep(time.Duration(v)*time.Second)
-		utils.PrintMessage(c.id, partName, "Client request= "+strconv.Itoa(v))
+		utils.PrintMessage(c.id, partName, " Client request= "+strconv.Itoa(v) +"\n")
 		c.chanToMutex<-config.DEMANDE
 		c.demandeEnCour = true
 	}
@@ -96,13 +96,13 @@ func (c*Client) getValueSC() uint32  {
 
 //on modifie la valeur de la variable partager
 func (c*Client)setValueSC(newValue uint32) {
-	utils.PrintMessage(c.id, partName, "Value before change =" +fmt.Sprint(c.valueSC))
+	utils.PrintMessage(c.id, partName, "Value before change = " +fmt.Sprint(c.valueSC) +"\n")
 	c.valueSC = newValue
-	utils.PrintMessage(c.id, partName, "Value after changen= " +fmt.Sprint(c.valueSC))
+	utils.PrintMessage(c.id, partName, "Value after changen= " +fmt.Sprint(c.valueSC) +"\n")
 }
 
 func (c*Client)changeValue() {
-	utils.PrintMessage(c.id, partName, "change value which random")
+	utils.PrintMessage(c.id, partName, " change value which random : ")
 	c.setValueSC(uint32(rand.Intn(200) +10))
 }
 

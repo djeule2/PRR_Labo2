@@ -59,13 +59,13 @@ func main()  {
 
 	fmt.Println("First port: ", config.FirsPort)
 	fmt.Println("Host: ", host)
-	fmt.Println("Number of process: ", config.NbrPrc);
+	fmt.Println("Number of process: ", config.NbrPrc)
 
-	for i:= uint32(0); i<config.NbrPrc; i++{
-		config.Ports[i] = config.FirsPort +1
-		config.Hosts[i] = host;
+	for i:= uint32(0); i< config.NbrPrc; i++{
+		config.Ports[i] = config.FirsPort +i
+		config.Hosts[i] = host
 		waitAllGroupe.Add(1)
-		exec(i);
+		exec(i)
 	}
 	waitAllGroupe.Wait()
 }

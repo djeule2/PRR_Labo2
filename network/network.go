@@ -50,6 +50,8 @@ func NewNetwork(prcId uint32, chanFromMutex chan string, chanToMutex chan string
 		uint32
 		net.Conn
 	})
+	network.chanToMutex = chanToMutex
+	network.chanFromMutex = chanFromMutex
 	network.mutex = mutex
 	network.site = make(map[uint32]net.Conn)
 	return network
@@ -65,7 +67,7 @@ func NewNetwork(prcId uint32, chanFromMutex chan string, chanToMutex chan string
 func (n *Network) Excecute()  {
 	address := config.Hosts[n.procId]+ ": " +strconv.FormatUint(uint64(config.Ports[n.procId]), 10)
 	listener, err := net.Listen("tcp", address)
-	utils.PrintMessage(n.procId, partName, "processus is running and listening on port" + fmt.Sprint(config.Ports[n.procId]))
+	utils.PrintMessage(n.procId, partName, " processus Network is running and listening on port: " + fmt.Sprint(config.Ports[n.procId]) +"\n")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -75,11 +77,12 @@ func (n *Network) Excecute()  {
 
 	for{
 		conn, err := listener.Accept() //f attent une connection client
+		utils.PrintMessage(n.procId, partName, " new processus network accept on port "+ fmt.Sprint(config.Ports[n.procId]) +"\n")
 		if err!= nil{
 			log.Print(err)
 			continue
 		}
-		utils.PrintMessage(n.procId, partName, "processu adress"+conn.RemoteAddr().String())
+		utils.PrintMessage(n.procId, partName, " processus adress"+conn.RemoteAddr().String() +"\n")
 		go n.handleConn(conn)
 	}
 }
@@ -95,13 +98,13 @@ func (n*Network)broadcaster()  {
 		select {
 		//traitement des message provenant du mutex puis les transmet au autres site
 		case message:= <-n.chanFromMutex:
-			utils.PrintMessage(n.procId, partName, "message from mutex "+ message)
-			utils.PrintMessage(n.procId, partName, "Sending message to other processus")
+			utils.PrintMessage(n.procId, partName, " message received from mutex "+ message +"\n")
+			utils.PrintMessage(n.procId, partName, " Sending message to other processus \n")
 			n.out <- message
 			//pour messages reçu d'un site  on fait une attente puis on transmet
 		case message:=<-n.in:
 			time.Sleep(config.TEMPS_TRANSMITION*time.Second)
-			utils.PrintMessage(n.procId, partName, "Sent message to mutex")
+			utils.PrintMessage(n.procId, partName, " Sent message to mutex \n")
 			go func() {n.chanToMutex<-message}()
 
         // arriver d'un nouveau site
@@ -113,22 +116,22 @@ func (n*Network)broadcaster()  {
 }
 func (n *Network) handleConn(conn net.Conn)  {
 	who := conn.RemoteAddr().String() // adress of processu
-	utils.PrintMessage(n.procId, partName, "Handleconn for site "+ who)
+	utils.PrintMessage(n.procId, partName, " Handleconn for site "+ who +"\n")
 
 	go n.sendMessageToNetwork()
 
 	buffer := make([]byte, 4096)
 	for{
-		utils.PrintMessage(n.procId, partName, "wait message from site "+ who)
+		utils.PrintMessage(n.procId, partName, " wait message from site "+ who +"\n")
 		m, err := conn.Read(buffer)
 		msg := string(buffer[0:m])
-		utils.PrintMessage(n.procId, partName, "Message from other processus arrive [site =" + who+"], msg: "+msg)
+		utils.PrintMessage(n.procId, partName, " Message from other processus arrive [site =" + who+"], msg: "+msg +"\n")
 		messsegeSplit := strings.Split(msg, ",")
 		if strings.HasPrefix(msg, "i") {
 			id, err := strconv.Atoi(messsegeSplit[1])
 
 			if err == nil{
-				utils.PrintMessage(n.procId, partName, "ConnecToOne =" +strconv.Itoa(id))
+				utils.PrintMessage(n.procId, partName, " ConnecToOne =" +strconv.Itoa(id) +"\n")
 				n.connectToOne(uint32(id))
 			}
 
@@ -157,7 +160,7 @@ func (n*Network) sendMessageToNetwork() {
 				newMsgSplit:= []string{msgSplit[0], msgSplit[1], msgSplit[2]}
 				newMsg := strings.Join(newMsgSplit, ",")
 
-				utils.PrintMessage(n.procId, partName, "send message for site i =" +strconv.Itoa(id))
+				utils.PrintMessage(n.procId, partName, " send message for site i = " +strconv.Itoa(id) +"\n")
 				n.site[uint32(id)].Write([]byte(newMsg))
 			}
 
@@ -170,7 +173,7 @@ func (n*Network) sendMessageToNetwork() {
 func (n*Network) connectToOne(procId uint32) {
 	adress := config.Hosts[procId] + ":" + strconv.FormatUint(uint64(config.Ports[procId]), 10)
 	d := net.Dialer{Timeout: dialTimeout.max}
-	utils.PrintMessage(n.procId, partName, "new connection with the site "+fmt.Sprint(procId))
+	utils.PrintMessage(n.procId, partName, " new connection with the site "+fmt.Sprint(procId)+"\n")
 	conn, err := d.Dial("tcp", adress)
 	if err!=nil{
 		log.Fatal(err)
@@ -180,7 +183,7 @@ func (n*Network) connectToOne(procId uint32) {
 		net.Conn
 	}{ procId , conn}
 
-	utils.PrintMessage(n.procId, partName, "connection establishrd with site " +fmt.Sprint(procId))
+	utils.PrintMessage(n.procId, partName, " connection establishrd with site " +fmt.Sprint(procId) +"\n")
 
 }
 
@@ -191,7 +194,7 @@ func (n*Network) connectToAll()  {
 		if p<n.procId{
 			adress := config.Hosts[p] + ":" + strconv.Itoa(int(v))
 			d := net.Dialer{Timeout: dialTimeout.max}
-			utils.PrintMessage(n.procId, partName, "new connection with the site "+adress)
+			utils.PrintMessage(n.procId, partName, " new connection with the site "+adress +"\n")
 			conn, err := d.Dial("tcp", adress)
 
 			if err != nil{
@@ -216,7 +219,7 @@ func (n*Network) checkReady()  {
 	for n.ready == false{
 		if len(n.site) == int(config.DefaultNbrProc)-1{
 			n.ready = true
-			utils.PrintMessage(n.procId, partName, "Ready, start mutex")
+			utils.PrintMessage(n.procId, partName, " Ready, start mutex \n")
 			n.mutex.Exec()
 		}
 		time.Sleep(120*time.Millisecond)

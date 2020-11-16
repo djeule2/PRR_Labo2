@@ -60,9 +60,11 @@ func (c *Client)receiveMessage()  {
 			utils.PrintMessage(c.id, partName, " Authorization to access to SC change the value \n")
 			c.traitment()
 		} else if strings.HasPrefix(mutexMsg, config.VALUE) {
+
 			utils.PrintMessage(c.id, partName, " New value received, updated \n")
-			splitMsg := strings.Split(mutexMsg, ", ");
+			splitMsg := strings.Split(mutexMsg, ",")
 			value, err := strconv.ParseUint(splitMsg[1], 10, 32)
+
 			if err == nil{
 				c.setValueSC(uint32(value))
 			}

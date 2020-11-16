@@ -86,6 +86,11 @@ func (mess *Mutex)ManageMessage()  {
 					mess.ack(uint32(Hi), uint32(i))
 
 				}
+			} else if strings.HasPrefix(clientMsg, config.VALUE){
+				utils.PrintMessage(mess.moi, partName, config.VALUE)
+				mess.chanToClient <- clientMsg
+
+
 			} else if strings.HasPrefix(clientMsg, config.REL) {
 				utils.PrintMessage(mess.moi, partName, " REL received \n")
 				msgSplit := strings.Split(clientMsg, ",")
@@ -93,7 +98,7 @@ func (mess *Mutex)ManageMessage()  {
 				i, err2 := strconv.ParseUint(msgSplit[2], 10, 32)
 
 				if err1 == nil && err2 == nil {
-					//fmt.Println("ok arriver")
+
 					mess.rel(uint32(Hi), uint32(i))
 
 				}

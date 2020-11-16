@@ -16,7 +16,8 @@ type Client struct {
 	chanFromMutex 	chan string
 	chanToMutex 	chan string
 	demandeTime		[]int
-	demandeEnCour	bool
+
+
 
 }
 
@@ -32,6 +33,8 @@ func NewClient(id uint32, chanFronMutex chan string, chanToMutex chan string, de
 	client.chanFromMutex = chanFronMutex
 	client.chanToMutex = chanToMutex
 	client.demandeTime = demandeTime
+
+
 
 	return client
 }
@@ -67,11 +70,13 @@ func (c *Client)receiveMessage()  {
 	}
 }
 
+
 func (c *Client) traitment() {
+
 	time.Sleep(config.Temps_SC*time.Second)
 	c.changeValue()
 	message := []string{config.VALUE, fmt.Sprint(c.valueSC)}
-	c.chanToMutex <- strings.Join(message, ",")
+	c.chanToMutex <-strings.Join(message, ",")
 	c.chanToMutex <- config.FIN
 }
 
@@ -79,13 +84,10 @@ func (c *Client) traitment() {
 //pour leurs accès à la section critique
 func (c*Client)demadeReq()  {
 	for _, v :=range c.demandeTime {
-		for c.demandeEnCour{
-			time.Sleep(100*time.Second)
-		}
 		time.Sleep(time.Duration(v)*time.Second)
 		utils.PrintMessage(c.id, partName, " Client request= "+strconv.Itoa(v) +"\n")
-		c.chanToMutex<-config.DEMANDE
-		c.demandeEnCour = true
+		c.chanToMutex <- config.DEMANDE
+
 	}
 
 }
@@ -98,11 +100,11 @@ func (c*Client) getValueSC() uint32  {
 func (c*Client)setValueSC(newValue uint32) {
 	utils.PrintMessage(c.id, partName, "Value before change = " +fmt.Sprint(c.valueSC) +"\n")
 	c.valueSC = newValue
-	utils.PrintMessage(c.id, partName, "Value after changen= " +fmt.Sprint(c.valueSC) +"\n")
+	utils.PrintMessage(c.id, partName, "Value after change= " +fmt.Sprint(c.valueSC) +"\n")
 }
 
 func (c*Client)changeValue() {
-	utils.PrintMessage(c.id, partName, " change value which random : ")
+	utils.PrintMessage(c.id, partName, " change value which random : \n")
 	c.setValueSC(uint32(rand.Intn(200) +10))
 }
 

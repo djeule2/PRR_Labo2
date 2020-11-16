@@ -4,9 +4,10 @@ const REQ = "REQ"
 
 const ACK = "ACK"
 
-const REL = "RELEASE"
+const REL = "REL"
 
 const DEMANDE = "DEMANDE"
+const ATTENTE = "ATTENTE"
 
 const VALUE = "VALUE"
 

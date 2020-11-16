@@ -42,7 +42,7 @@ func (r*demandesReqType) Set(s string) error  {
 func main()  {
 	var nbrProc, port int
 	var host  string
-	var defaultDemandesReq demandesReqType = []int{2, 8}
+	var defaultDemandesReq demandesReqType = []int{2, 6}
 
 
 	flag.IntVar(&nbrProc, "n", config.DefaultNbrProc, "Number of process")
@@ -91,6 +91,6 @@ func exec(id uint32)  {
 	mutex := mutex.NewMutex(id, chanClientMutex, chanMutexClient, chanNetworkMutex, chanMutexNetwork, *client)
 	network := network.NewNetwork(id, chanMutexNetwork, chanNetworkMutex, *mutex)
 
-	go network.Excecute();
+	go network.Excecute()
 
 }

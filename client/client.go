@@ -63,7 +63,6 @@ func (c *Client) Exec()  {
 
 		c.demandeSectionCritique()
 		if !c.checkIfUserIsNotUnique(c.user) {
-			c.addUser()
 			message := []string{config.ADD_USER, fmt.Sprint(c.user)}
 			c.chanToMutex <- strings.Join(message, ",")
 		} else {
@@ -101,9 +100,15 @@ func (c *Client) Exec()  {
 							if item.Auction.IdName == c.auctions[pos].IdName {
 								println("new winning for the auction : " + item.Auction.Nom + " id : " + item.Auction.IdName)
 							}
+							message := []string{config.NOTIFY_SUBSCRIBED, fmt.Sprint(idAuction)}
+							c.chanToMutex <- strings.Join(message, ",")
 						}
 						c.auctions[pos].Winner = c.user
+						message := []string{config.CHANGE_WINNER, fmt.Sprint(c.user), fmt.Sprint(c.auctions[pos].IdName)}
+						c.chanToMutex <- strings.Join(message, ",")
 						c.auctions[pos].Price = intNewValue
+						message = []string{config.CHANGE_PRICE, fmt.Sprint(intNewValue), fmt.Sprint(c.auctions[pos].IdName)}
+						c.chanToMutex <- strings.Join(message, ",")
 					}
 					c.relacherSectionCritique()
 				}
@@ -178,8 +183,13 @@ func (c *Client) Exec()  {
 				for _, item := range c.newAuction {
 					println("new auction! : " + toAdd.Nom + " id : " + toAdd.IdName)
 				}*/
-				c.auctions = append(c.auctions, toAdd)
-				c.auctionIds++
+				message := []string{config.ADD_AUCTION, fmt.Sprint(auctionName), fmt.Sprint(c.auctionIds),
+					fmt.Sprint(temps), fmt.Sprint(valMin), fmt.Sprint(c.user),fmt.Sprint("")}
+				c.chanToMutex <- strings.Join(message, ",")
+				message = []string{config.INCREMENT_AUCTION_IDS}
+				c.chanToMutex <- strings.Join(message, ",")
+				message = []string{config.NOTIFY_NEWAUCTION,  fmt.Sprint(auctionName)}
+				c.chanToMutex <- strings.Join(message, ",")
 				c.relacherSectionCritique()
 			}
 		default :
@@ -212,6 +222,79 @@ func (c *Client)receiveMessage()  {
 
 			if err == nil{
 				c.setValueSC(uint32(value))
+			}
+		} else if strings.HasPrefix(mutexMsg, config.ADD_USER) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			c.users = append(c.users, splitMsg[1])
+		}  else if strings.HasPrefix(mutexMsg, config.CHANGE_PRICE) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			for i := range c.auctions {
+				if c.auctions[i].IdName == splitMsg[2] {
+					value, err := strconv.Atoi(splitMsg[1])
+
+					if err == nil{
+						c.auctions[i].Price = value
+					}
+				}
+			}
+		}  else if strings.HasPrefix(mutexMsg, config.CHANGE_WINNER) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			for i := range c.auctions {
+				if c.auctions[i].IdName == splitMsg[2] {
+					c.auctions[i].Winner = splitMsg[1]
+				}
+			}
+		} else if strings.HasPrefix(mutexMsg, config.ADD_AUCTION) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			temps, err := strconv.Atoi(splitMsg[3])
+			price, errPrice := strconv.Atoi(splitMsg[4])
+
+			time := time.Now().Add(time.Duration(temps * 6e10))
+			if err == nil && errPrice == nil {
+
+				toAdd := Auction.Auction{
+					Nom:      splitMsg[1],
+					IdName:   splitMsg[2],
+					Temps:    time,
+					Price:    price,
+					Provider: splitMsg[5],
+					Winner:   splitMsg[6],
+				}
+				c.auctions = append(c.auctions, toAdd)
+			}
+		} else if strings.HasPrefix(mutexMsg, config.INCREMENT_AUCTION_IDS) {
+			c.auctionIds++
+		} else if strings.HasPrefix(mutexMsg, config.NOTIFY_SUBSCRIBED) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			for _, item := range c.auctions {
+				if item.IdName == splitMsg[1] {
+					println("new winner for the auction : " + item.Nom + " id : " + item.IdName)
+				}
+			}
+		} else if strings.HasPrefix(mutexMsg, config.NOTIFY_END) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			for _, item := range c.auctions {
+				if item.IdName == splitMsg[1] {
+					if item.Winner == "" {
+						println("The auction : " + item.IdName + " ended with no winner")
+					} else {
+						println("The auction : " + item.IdName + " ended, the winner is : " + item.Winner)
+					}
+				}
+			}
+
+		}else if strings.HasPrefix(mutexMsg, config.NOTIFY_NEWAUCTION) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			if c.newAuction {
+				println("New auction : " + splitMsg[1])
+			}
+
+		} else if strings.HasPrefix(mutexMsg, config.REMOVE_AUCTION) {
+			splitMsg := strings.Split(mutexMsg, ",")
+			for i, item := range c.auctions {
+				if item.IdName == splitMsg[1] {
+					c.auctions = append(c.auctions[:i], c.auctions[i+1:]...)
+				}
 			}
 		}
 	}
@@ -263,15 +346,6 @@ func (c*Client)setValueSC(newValue uint32) {
 func (c*Client)changeValue() {
 	utils.PrintMessage(c.id, partName, " change value which random : \n")
 	c.setValueSC(uint32(rand.Intn(200) +10))
-}
-
-
-
-func (c *Client) addUser() {
-	c.users = append(c.users, c.user)
-	message := []string{config.USERS, fmt.Sprint(c.users)}
-	c.chanToMutex <- strings.Join(message, ",")
-	c.chanToMutex <- config.FIN
 }
 
 func toStringLot(l Auction.Auction) string {
@@ -335,4 +409,21 @@ func (c *Client) checkIfUserIsNotUnique(user string) bool {
 	}
 	return false
 }
+
+func (c *Client) auctionGarbageCollector() {
+	for {
+		time.Sleep(time.Second*10)
+		c.demandeSectionCritique()
+		for _, item := range c.auctions {
+			if item.Temps.Sub(time.Now()) < 0 {
+				message := []string{config.NOTIFY_END, fmt.Sprint(item.IdName)}
+				c.chanToMutex <- strings.Join(message, ",")
+				message = []string{config.REMOVE_AUCTION, fmt.Sprint(item.IdName)}
+				c.chanToMutex <- strings.Join(message, ",")
+			}
+		}
+		c.relacherSectionCritique()
+	}
+}
+
 

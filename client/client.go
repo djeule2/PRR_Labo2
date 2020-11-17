@@ -1,12 +1,14 @@
 package client
 
 import (
+	"../Auction"
+	"../config"
 	"../utils"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"strconv"
 	"strings"
-	"../config"
 	"time"
 )
 
@@ -17,8 +19,16 @@ type Client struct {
 	chanToMutex 	chan string
 	demandeTime		[]int
 	demandeEnCour	bool
-
+	user			string
+	users 			[]string
+	auctions 		[]Auction.Auction
+	subscriptions 	[]Auction.Subscription
+	newAuction 		[]Auction.NewAuctionSub
 }
+
+var (
+	auctionIds = 0
+)
 
 const partName  = "clt"
 
@@ -68,9 +78,39 @@ func (c *Client)receiveMessage()  {
 }
 
 func (c *Client) traitment() {
+	var input string
+	unique := false
+	for unique==false {
+		fmt.Scanln(&input)
+		if runtime.GOOS == "windows" {
+			c.user = strings.TrimRight(input, "\r\n")
+		} else {
+			c.user = strings.TrimRight(input, "\n")
+		}
+		if !c.checkIfUserIsNotUnique(c.user) {
+			c.addUser()
+			message := []string{config.USER, fmt.Sprint(c.user)}
+			c.chanToMutex <- strings.Join(message, ",")
+			c.chanToMutex <- config.FIN
+		} else {
+			println("user not unique")
+		}
+	}
+	print(menu())
+	fmt.Scanln(&input)
+	for input != "exit" {
+		switch input {
+		case "1":
+		case "2":
+		case "3":
+		case "4":
+		}
+	}
+
+
 	time.Sleep(config.Temps_SC*time.Second)
 	c.changeValue()
-	message := []string{config.VALUE, fmt.Sprint(c.valueSC)}
+	message := []string{config.USERS, fmt.Sprint(c.users)}
 	c.chanToMutex <- strings.Join(message, ",")
 	c.chanToMutex <- config.FIN
 }
@@ -104,5 +144,76 @@ func (c*Client)setValueSC(newValue uint32) {
 func (c*Client)changeValue() {
 	utils.PrintMessage(c.id, partName, " change value which random : ")
 	c.setValueSC(uint32(rand.Intn(200) +10))
+}
+
+
+
+func (c *Client) addUser() {
+	c.users = append(c.users, c.user)
+	message := []string{config.USERS, fmt.Sprint(c.users)}
+	c.chanToMutex <- strings.Join(message, ",")
+	c.chanToMutex <- config.FIN
+}
+
+func ToStringLot(l Auction.Auction) string {
+	return fmt.Sprintf("name : %v\t price : %v tokens\t id : %v\t remaining time : %.3v minutes",
+		l.Nom, l.Price, l.IdName, l.Temps.Sub(time.Now()).Minutes())
+}
+
+func menu() string {
+	return "==== menu ====\n" +
+		"1 : see auctions\n" +
+		"2 : bid\n" +
+		"3 : manage notifications\n" +
+		"4 : create auction\n" +
+		"exit : exit\n"
+}
+
+func (c *Client) removeUser(user string) {
+	for i, item := range c.users {
+		if item == user {
+			c.users = append(c.users[:i], c.users[i+1:]...)
+		}
+	}
+}
+
+func (c *Client) removeAuction(auction Auction.Auction) {
+	for i, item := range c.auctions {
+		if item == auction {
+			c.auctions = append(c.auctions[:i], c.auctions[i+1:]...)
+		}
+	}
+}
+
+func (c *Client) removeSubscription(sub Auction.Subscription) {
+	for i, item := range c.subscriptions {
+		if item == sub {
+			c.subscriptions = append(c.subscriptions[:i], c.subscriptions[i+1:]...)
+		}
+	}
+}
+
+func (c *Client) search(id string) (bool, int) {
+	for i, item := range c.auctions {
+		if id == item.IdName {
+			return true, i
+		}
+	}
+	return false, -1
+}
+
+func getValueFromUser(input string, message string) string {
+	println(message)
+	fmt.Scanln(&input)
+	return input
+}
+
+func (c *Client) checkIfUserIsNotUnique(user string) bool {
+	for _, item := range c.users {
+		if item == user {
+			return true
+		}
+	}
+	return false
 }
 

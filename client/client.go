@@ -23,12 +23,9 @@ type Client struct {
 	users 			[]string
 	auctions 		[]Auction.Auction
 	subscriptions 	[]Auction.Subscription
-	newAuction 		[]Auction.NewAuctionSub
+	newAuction 		bool
+	auctionIds      int
 }
-
-var (
-	auctionIds = 0
-)
 
 const partName  = "clt"
 
@@ -42,8 +39,8 @@ func NewClient(id uint32, chanFronMutex chan string, chanToMutex chan string, de
 	client.chanFromMutex = chanFronMutex
 	client.chanToMutex = chanToMutex
 	client.demandeTime = demandeTime
-
-
+	client.demandeEnCour = false
+	client.newAuction = false
 
 	return client
 }
@@ -63,9 +60,8 @@ func (c *Client) Exec()  {
 		} else {
 			c.user = strings.TrimRight(input, "\n")
 		}
-		// SECTION CRITIQUE
-		c.chanToMutex <- config.DEMANDE
 
+		c.demandeSectionCritique()
 		if !c.checkIfUserIsNotUnique(c.user) {
 			c.addUser()
 			message := []string{config.ADD_USER, fmt.Sprint(c.user)}
@@ -73,19 +69,124 @@ func (c *Client) Exec()  {
 		} else {
 			println("user not unique")
 		}
-		c.chanToMutex <- config.FIN
-		// SECTION CRITIQUE
+		c.relacherSectionCritique()
+
 	}
 	print(menu())
 	fmt.Scanln(&input)
 	for input != "exit" {
 		switch input {
 		case "1":
-			// SECTION CRITIQUE
+			c.demandeSectionCritique()
+			for _, lot := range c.auctions {
+				println(toStringLot(lot))
+			}
+			c.relacherSectionCritique()
 		case "2":
+			idAuction := getValueFromUser(input, "enter the auction id")
+			c.demandeSectionCritique()
+			isFound, pos := c.search(idAuction)
+			c.relacherSectionCritique()
+			if isFound == true {
+				newValue := getValueFromUser(input, "How much to bid?")
+				intNewValue, newValueErr := strconv.Atoi(newValue)
+				if newValueErr == nil {
+					c.demandeSectionCritique()
+					if intNewValue > c.auctions[pos].Price {
+						println("You're winning the auction")
+						c.subscriptions = append(c.subscriptions, Auction.Subscription{
+							Auction: c.auctions[pos],
+						})
+						for _, item := range c.subscriptions {
+							if item.Auction.IdName == c.auctions[pos].IdName {
+								println("new winning for the auction : " + item.Auction.Nom + " id : " + item.Auction.IdName)
+							}
+						}
+						c.auctions[pos].Winner = c.user
+						c.auctions[pos].Price = intNewValue
+					}
+					c.relacherSectionCritique()
+				}
+			} else {
+				println("id not found")
+			}
 		case "3":
+			println("1 : subscribe to an auction by id\n" +
+				"2 : subscribe to all new auctions\n" +
+				"3 : unsubscribe to an auction by id\n" +
+				"4 : unsubscribe to all new auctions\n")
+			fmt.Scanln(&input)
+			switch input {
+			case "1":
+				idAuction := getValueFromUser(input, "enter the auction id")
+				c.demandeSectionCritique()
+				isFound, pos := c.search(idAuction)
+				c.relacherSectionCritique()
+				if isFound == true {
+					c.demandeSectionCritique()
+					c.subscriptions = append(c.subscriptions, Auction.Subscription{
+						Auction: c.auctions[pos],
+					})
+					c.relacherSectionCritique()
+				} else {
+					println("id not found")
+				}
+			case "2":
+				c.newAuction = true
+			case "3":
+				idAuction := getValueFromUser(input,"enter the auction id")
+				c.demandeSectionCritique()
+				isFound, pos := c.search(idAuction)
+				c.relacherSectionCritique()
+				if isFound == true {
+					c.demandeSectionCritique()
+					for _, item := range c.subscriptions {
+						if item.Auction.IdName == c.auctions[pos].IdName {
+							c.removeSubscription(item)
+						}
+					}
+					c.relacherSectionCritique()
+				} else {
+					println("id not found")
+				}
+			case "4":
+				c.newAuction = false
+			default:
+			}
 		case "4":
+			auctionName := getValueFromUser(input, "enter auction name")
+			valMin, errValMin := strconv.Atoi(getValueFromUser(input, "enter bid starting price"))
+			temps, errTemps := strconv.Atoi(getValueFromUser(input, "enter time the auction may last in minutes"))
+
+			time := time.Now().Add(time.Duration(temps*6e10))
+			c.demandeSectionCritique()
+			if errTemps == nil && errValMin == nil {
+				toAdd := Auction.Auction{
+					Nom:         auctionName,
+					IdName:      strconv.Itoa(c.auctionIds),
+					Temps:       time,
+					Price:		 valMin,
+					Provider:    c.user,
+					Winner:		 "",
+				}
+				// subscription for the vendor
+				c.subscriptions = append(c.subscriptions, Auction.Subscription{
+					Auction: toAdd,
+				})
+				// subscriptions for the subscribed to all new auctions
+				/*
+				for _, item := range c.newAuction {
+					println("new auction! : " + toAdd.Nom + " id : " + toAdd.IdName)
+				}*/
+				c.auctions = append(c.auctions, toAdd)
+				c.auctionIds++
+				c.relacherSectionCritique()
+			}
+		default :
+			println("wrong entry")
 		}
+		println(menu())
+		fmt.Scanln(&input)
 	}
 
 }
@@ -102,7 +203,7 @@ func (c *Client)receiveMessage()  {
 		utils.PrintMessage(c.id, partName, mutexMsg)
 		if strings.HasPrefix(mutexMsg, config.AUTORISATION){
 			utils.PrintMessage(c.id, partName, " Authorization to access to SC change the value \n")
-			c.traitment()
+			c.demandeEnCour = true
 		} else if strings.HasPrefix(mutexMsg, config.VALUE) {
 
 			utils.PrintMessage(c.id, partName, " New value received, updated \n")
@@ -116,6 +217,16 @@ func (c *Client)receiveMessage()  {
 	}
 }
 
+func (c *Client) demandeSectionCritique() {
+	c.chanToMutex <- config.DEMANDE
+	for !c.demandeEnCour {
+	}
+}
+
+func (c *Client) relacherSectionCritique() {
+	c.demandeEnCour = false
+	c.chanToMutex <- config.FIN
+}
 
 func (c *Client) traitment() {
 
@@ -163,7 +274,7 @@ func (c *Client) addUser() {
 	c.chanToMutex <- config.FIN
 }
 
-func ToStringLot(l Auction.Auction) string {
+func toStringLot(l Auction.Auction) string {
 	return fmt.Sprintf("name : %v\t price : %v tokens\t id : %v\t remaining time : %.3v minutes",
 		l.Nom, l.Price, l.IdName, l.Temps.Sub(time.Now()).Minutes())
 }
@@ -217,13 +328,11 @@ func getValueFromUser(input string, message string) string {
 }
 
 func (c *Client) checkIfUserIsNotUnique(user string) bool {
-	// SECTION CRITIQUE DEBUT
 	for _, item := range c.users {
 		if item == user {
 			return true
 		}
 	}
 	return false
-	// SECTION CRITIQUE FIN
 }
 

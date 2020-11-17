@@ -220,51 +220,43 @@ func (mess *Mutex)ManageMessage()  {
 
 				} else if strings.HasPrefix(mutexMsg, config.USERS){
 					utils.PrintMessage(mess.moi, partName, config.USERS)
-					// ....
-
+					mess.sendmodif(config.USERS, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.ADD_USER){
 					utils.PrintMessage(mess.moi, partName, config.ADD_USER)
-					//..
-
+					mess.sendmodif(config.ADD_USER, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.ADD_AUCTION){
 					utils.PrintMessage(mess.moi, partName, config.ADD_AUCTION)
-					//...
-
+					mess.sendmodif(config.ADD_USER, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.REMOVE_AUCTION){
 					utils.PrintMessage(mess.moi, partName, config.REMOVE_AUCTION)
-
-
+					mess.sendmodif(config.REMOVE_AUCTION, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.INCREMENT_AUCTION_IDS){
 					utils.PrintMessage(mess.moi, partName, config.INCREMENT_AUCTION_IDS)
-
-
+					mess.sendmodif(config.INCREMENT_AUCTION_IDS, mutexMsg)
 
 				} else if strings.HasPrefix(mutexMsg, config.NOTIFY_NEWAUCTION){
 					utils.PrintMessage(mess.moi, partName, config.NOTIFY_NEWAUCTION)
-
-
+					mess.sendmodif(config.NOTIFY_NEWAUCTION, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.NOTIFY_SUBSCRIBED){
 					utils.PrintMessage(mess.moi, partName, config.NOTIFY_SUBSCRIBED)
-
-
+					mess.sendmodif(config.NOTIFY_SUBSCRIBED, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.NOTIFY_END){
 					utils.PrintMessage(mess.moi, partName, config.NOTIFY_END)
-
-
+					mess.sendmodif(config.NOTIFY_END, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.CHANGE_WINNER){
 					utils.PrintMessage(mess.moi, partName, config.CHANGE_WINNER)
-
-
+					mess.sendmodif(config.CHANGE_WINNER, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.CHANGE_PRICE) {
 					utils.PrintMessage(mess.moi, partName, config.CHANGE_PRICE)
+					mess.sendmodif(config.CHANGE_PRICE, mutexMsg)
 
 				}else if strings.HasPrefix(mutexMsg, config.FIN){
 					utils.PrintMessage(mess.moi, partName, " END received from client \n")
@@ -370,6 +362,16 @@ func (m*Mutex) sendMessage(methode string, hi uint32, i uint32)  {
 	}
 }
 
+func (m*Mutex)sendmodif(methode string, message string)  {
+	for i:= uint32(0); i< m.n; i++{
+		if i != m.moi{
+			mess := []string{methode, message, fmt.Sprint(m.moi), fmt.Sprint(i)}
+			m.sendMessageToNetwork(strings.Join(mess, ","))
+		}
+	}
+
+}
+
 func (m*Mutex)sendValue(v uint32)  {
 	for i:= uint32(0); i< m.n; i++{
 		if i != m.moi{
@@ -379,6 +381,8 @@ func (m*Mutex)sendValue(v uint32)  {
 	}
 
 }
+
+
 
 func (m*Mutex)sendMessageToNetwork(message string)  {
 	utils.PrintMessage(m.moi, partName, " Send to network : "+message +"\n")

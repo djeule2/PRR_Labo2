@@ -36,7 +36,7 @@ var dialTimeout = struct {
 	timeOut time.Duration
 	max time.Duration
 }{
-	20*time.Second,
+	10*time.Second,
 	 60*time.Second,
 }
 
@@ -104,7 +104,9 @@ func (n*Network)broadcaster()  {
 			//pour messages reçu d'un site  on fait une attente puis on transmet
 		case message:=<-n.in:
 			time.Sleep(config.TEMPS_TRANSMITION*time.Second)
+
 			utils.PrintMessage(n.procId, partName, " Sent message to mutex \n")
+			fmt.Println("mesage to mutex: "+message)
 			go func() {n.chanToMutex<-message}()
 
         // arriver d'un nouveau site
@@ -217,12 +219,12 @@ func (n*Network) connectToAll()  {
 //une fois tous le monde prêt nous pouvons lancé le processus mutex
 func (n*Network) checkReady()  {
 	for n.ready == false{
-		if len(n.site) == int(config.DefaultNbrProc)-1{
+		if len(n.site) == int(config.NbrPrc)-1{
 			n.ready = true
 			utils.PrintMessage(n.procId, partName, " Ready, start mutex \n")
 			n.mutex.Exec()
 		}
-		time.Sleep(120*time.Millisecond)
+		time.Sleep(100*time.Millisecond)
 	}
 
 }

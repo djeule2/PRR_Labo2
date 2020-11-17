@@ -43,13 +43,50 @@ func NewClient(id uint32, chanFronMutex chan string, chanToMutex chan string, de
 	client.chanToMutex = chanToMutex
 	client.demandeTime = demandeTime
 
+
+
 	return client
 }
 
 //Exec  lance les deux goroutines du client, pour communiquer avec le mutex dans les deux sens
 func (c *Client) Exec()  {
+
 	go c.receiveMessage()
 	go c.demadeReq()
+
+	var input string
+	unique := false
+	for unique==false {
+		fmt.Scanln(&input)
+		if runtime.GOOS == "windows" {
+			c.user = strings.TrimRight(input, "\r\n")
+		} else {
+			c.user = strings.TrimRight(input, "\n")
+		}
+		// SECTION CRITIQUE
+		c.chanToMutex <- config.DEMANDE
+
+		if !c.checkIfUserIsNotUnique(c.user) {
+			c.addUser()
+			message := []string{config.ADD_USER, fmt.Sprint(c.user)}
+			c.chanToMutex <- strings.Join(message, ",")
+		} else {
+			println("user not unique")
+		}
+		c.chanToMutex <- config.FIN
+		// SECTION CRITIQUE
+	}
+	print(menu())
+	fmt.Scanln(&input)
+	for input != "exit" {
+		switch input {
+		case "1":
+			// SECTION CRITIQUE
+		case "2":
+		case "3":
+		case "4":
+		}
+	}
 
 }
 
@@ -62,14 +99,16 @@ func (c *Client) Exec()  {
 func (c *Client)receiveMessage()  {
 	for{
 		mutexMsg := <- c.chanFromMutex
-		utils.PrintMessage(c.id, partName, mutexMsg);
+		utils.PrintMessage(c.id, partName, mutexMsg)
 		if strings.HasPrefix(mutexMsg, config.AUTORISATION){
 			utils.PrintMessage(c.id, partName, " Authorization to access to SC change the value \n")
 			c.traitment()
 		} else if strings.HasPrefix(mutexMsg, config.VALUE) {
+
 			utils.PrintMessage(c.id, partName, " New value received, updated \n")
-			splitMsg := strings.Split(mutexMsg, ", ");
+			splitMsg := strings.Split(mutexMsg, ",")
 			value, err := strconv.ParseUint(splitMsg[1], 10, 32)
+
 			if err == nil{
 				c.setValueSC(uint32(value))
 			}
@@ -77,36 +116,8 @@ func (c *Client)receiveMessage()  {
 	}
 }
 
-func (c *Client) traitment() {
-	var input string
-	unique := false
-	for unique==false {
-		fmt.Scanln(&input)
-		if runtime.GOOS == "windows" {
-			c.user = strings.TrimRight(input, "\r\n")
-		} else {
-			c.user = strings.TrimRight(input, "\n")
-		}
-		if !c.checkIfUserIsNotUnique(c.user) {
-			c.addUser()
-			message := []string{config.USER, fmt.Sprint(c.user)}
-			c.chanToMutex <- strings.Join(message, ",")
-			c.chanToMutex <- config.FIN
-		} else {
-			println("user not unique")
-		}
-	}
-	print(menu())
-	fmt.Scanln(&input)
-	for input != "exit" {
-		switch input {
-		case "1":
-		case "2":
-		case "3":
-		case "4":
-		}
-	}
 
+func (c *Client) traitment() {
 
 	time.Sleep(config.Temps_SC*time.Second)
 	c.changeValue()
@@ -119,13 +130,10 @@ func (c *Client) traitment() {
 //pour leurs accès à la section critique
 func (c*Client)demadeReq()  {
 	for _, v :=range c.demandeTime {
-		for c.demandeEnCour{
-			time.Sleep(100*time.Second)
-		}
 		time.Sleep(time.Duration(v)*time.Second)
 		utils.PrintMessage(c.id, partName, " Client request= "+strconv.Itoa(v) +"\n")
-		c.chanToMutex<-config.DEMANDE
-		c.demandeEnCour = true
+		c.chanToMutex <- config.DEMANDE
+
 	}
 
 }
@@ -138,11 +146,11 @@ func (c*Client) getValueSC() uint32  {
 func (c*Client)setValueSC(newValue uint32) {
 	utils.PrintMessage(c.id, partName, "Value before change = " +fmt.Sprint(c.valueSC) +"\n")
 	c.valueSC = newValue
-	utils.PrintMessage(c.id, partName, "Value after changen= " +fmt.Sprint(c.valueSC) +"\n")
+	utils.PrintMessage(c.id, partName, "Value after change= " +fmt.Sprint(c.valueSC) +"\n")
 }
 
 func (c*Client)changeValue() {
-	utils.PrintMessage(c.id, partName, " change value which random : ")
+	utils.PrintMessage(c.id, partName, " change value which random : \n")
 	c.setValueSC(uint32(rand.Intn(200) +10))
 }
 
@@ -209,11 +217,13 @@ func getValueFromUser(input string, message string) string {
 }
 
 func (c *Client) checkIfUserIsNotUnique(user string) bool {
+	// SECTION CRITIQUE DEBUT
 	for _, item := range c.users {
 		if item == user {
 			return true
 		}
 	}
 	return false
+	// SECTION CRITIQUE FIN
 }
 

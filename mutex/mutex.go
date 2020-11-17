@@ -90,8 +90,106 @@ func (mess *Mutex)ManageMessage()  {
 				utils.PrintMessage(mess.moi, partName, config.VALUE)
 				mess.chanToClient <- clientMsg
 
+			} else if strings.HasPrefix(clientMsg, config.USERS){
+			utils.PrintMessage(mess.moi, partName, config.USERS)
+			mess.chanToClient <- clientMsg
 
-			} else if strings.HasPrefix(clientMsg, config.REL) {
+
+			}else if strings.HasPrefix(clientMsg, config.ADD_USER){
+				utils.PrintMessage(mess.moi, partName, config.ADD_USER)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.ADD_AUCTION){
+				utils.PrintMessage(mess.moi, partName, config.ADD_AUCTION)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.REMOVE_AUCTION){
+				utils.PrintMessage(mess.moi, partName, config.REMOVE_AUCTION)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.INCREMENT_AUCTION_IDS){
+				utils.PrintMessage(mess.moi, partName, config.INCREMENT_AUCTION_IDS)
+				mess.chanToClient <- clientMsg
+
+
+			} else if strings.HasPrefix(clientMsg, config.NOTIFY_NEWAUCTION){
+				utils.PrintMessage(mess.moi, partName, config.NOTIFY_NEWAUCTION)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.NOTIFY_SUBSCRIBED){
+				utils.PrintMessage(mess.moi, partName, config.NOTIFY_SUBSCRIBED)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.NOTIFY_END){
+				utils.PrintMessage(mess.moi, partName, config.NOTIFY_END)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.CHANGE_WINNER){
+				utils.PrintMessage(mess.moi, partName, config.CHANGE_WINNER)
+				mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.CHANGE_PRICE) {
+				utils.PrintMessage(mess.moi, partName, config.CHANGE_PRICE)
+				mess.chanToClient <- clientMsg
+
+			}else if strings.HasPrefix(clientMsg, config.USERS){
+					utils.PrintMessage(mess.moi, partName, config.USERS)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.ADD_USER){
+					utils.PrintMessage(mess.moi, partName, config.ADD_USER)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.ADD_AUCTION){
+					utils.PrintMessage(mess.moi, partName, config.ADD_AUCTION)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.REMOVE_AUCTION){
+					utils.PrintMessage(mess.moi, partName, config.REMOVE_AUCTION)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.INCREMENT_AUCTION_IDS){
+					utils.PrintMessage(mess.moi, partName, config.INCREMENT_AUCTION_IDS)
+					mess.chanToClient <- clientMsg
+
+
+			} else if strings.HasPrefix(clientMsg, config.NOTIFY_NEWAUCTION){
+					utils.PrintMessage(mess.moi, partName, config.NOTIFY_NEWAUCTION)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.NOTIFY_SUBSCRIBED){
+					utils.PrintMessage(mess.moi, partName, config.NOTIFY_SUBSCRIBED)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.NOTIFY_END){
+					utils.PrintMessage(mess.moi, partName, config.NOTIFY_END)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.CHANGE_WINNER){
+					utils.PrintMessage(mess.moi, partName, config.CHANGE_WINNER)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.CHANGE_PRICE){
+					utils.PrintMessage(mess.moi, partName, config.CHANGE_PRICE)
+					mess.chanToClient <- clientMsg
+
+
+			}else if strings.HasPrefix(clientMsg, config.REL) {
 				utils.PrintMessage(mess.moi, partName, " REL received \n")
 				msgSplit := strings.Split(clientMsg, ",")
 				Hi, err1 := strconv.ParseUint(msgSplit[1], 10, 32)
@@ -120,7 +218,55 @@ func (mess *Mutex)ManageMessage()  {
 						mess.sendValue(uint32(v))
 					}
 
-				} else if strings.HasPrefix(mutexMsg, config.FIN){
+				} else if strings.HasPrefix(mutexMsg, config.USERS){
+					utils.PrintMessage(mess.moi, partName, config.USERS)
+					// ....
+
+
+				}else if strings.HasPrefix(mutexMsg, config.ADD_USER){
+					utils.PrintMessage(mess.moi, partName, config.ADD_USER)
+					//..
+
+
+				}else if strings.HasPrefix(mutexMsg, config.ADD_AUCTION){
+					utils.PrintMessage(mess.moi, partName, config.ADD_AUCTION)
+					//...
+
+
+				}else if strings.HasPrefix(mutexMsg, config.REMOVE_AUCTION){
+					utils.PrintMessage(mess.moi, partName, config.REMOVE_AUCTION)
+
+
+
+				}else if strings.HasPrefix(mutexMsg, config.INCREMENT_AUCTION_IDS){
+					utils.PrintMessage(mess.moi, partName, config.INCREMENT_AUCTION_IDS)
+
+
+
+				} else if strings.HasPrefix(mutexMsg, config.NOTIFY_NEWAUCTION){
+					utils.PrintMessage(mess.moi, partName, config.NOTIFY_NEWAUCTION)
+
+
+
+				}else if strings.HasPrefix(mutexMsg, config.NOTIFY_SUBSCRIBED){
+					utils.PrintMessage(mess.moi, partName, config.NOTIFY_SUBSCRIBED)
+
+
+
+				}else if strings.HasPrefix(mutexMsg, config.NOTIFY_END){
+					utils.PrintMessage(mess.moi, partName, config.NOTIFY_END)
+
+
+
+				}else if strings.HasPrefix(mutexMsg, config.CHANGE_WINNER){
+					utils.PrintMessage(mess.moi, partName, config.CHANGE_WINNER)
+
+
+
+				}else if strings.HasPrefix(mutexMsg, config.CHANGE_PRICE) {
+					utils.PrintMessage(mess.moi, partName, config.CHANGE_PRICE)
+
+				}else if strings.HasPrefix(mutexMsg, config.FIN){
 					utils.PrintMessage(mess.moi, partName, " END received from client \n")
 					mess.fin()
 
